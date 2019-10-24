@@ -1,0 +1,34 @@
+package pellicle
+version = 0.1.0
+authors = "Aneesh Krishna"
+license = "ISC"
+brief = "Formally verified photolithography wafer scanner positioning kernel"
+
+depends = base
+
+sourcedir = "idris"
+
+modules = Pellicle.Core.Types,
+          Pellicle.Core.Bounded,
+          Pellicle.Core.Matrix,
+          Pellicle.Core.Units,
+          Pellicle.Metrology.Interferometer,
+          Pellicle.Metrology.Edlen,
+          Pellicle.Metrology.Encoder,
+          Pellicle.Metrology.Leveling,
+          Pellicle.Kinematics.DegreesOfFreedom,
+          Pellicle.Kinematics.Trajectory,
+          Pellicle.Kinematics.Decoupling,
+          Pellicle.Kinematics.DualStageSwap,
+          Pellicle.Exposure.ScanSync,
+          Pellicle.Exposure.Overlay,
+          Pellicle.Exposure.Dose,
+          Pellicle.Exposure.Recipe,
+          Pellicle.Proof.StateSafety,
+          Pellicle.Proof.CollisionAvoidance,
+          Pellicle.Proof.OverlayBounds,
+          Pellicle.Proof.LinearResources,
+          Pellicle.Main
+
+main = Pellicle.Main
+executable = pellicle

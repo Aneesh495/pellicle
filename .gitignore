@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+bin/
+
+# Temporary and editor files
+*~
+*.swp
+*.swo
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# IPC sockets
+*.sock
+/tmp/pellicle_*.sock
