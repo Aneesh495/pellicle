@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""
+Pellicle Unified Operational CLI Toolchain Driver
+Provides unified commands for build, test, benchmark, simulation, visualization, and linting.
+"""
+
+import sys
+import os
+import subprocess
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+def run_cmd(cmd, cwd=PROJECT_ROOT, fatal=True):
+    print(f"--> Executing: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
+    res = subprocess.run(cmd, cwd=cwd, shell=isinstance(cmd, str))
+    if res.returncode != 0 and fatal:
+        print(f"Command failed with exit code {res.returncode}")
+        sys.exit(res.returncode)
+    return res.returncode
+
+def cmd_build():
+    print("================================================================================")
+    print("Building Pellicle Idris 2 Kernel & C17 Fastpath Acceleration Engine")
+    print("================================================================================")
+    run_cmd(["idris2", "--build", "pellicle.ipkg"])
+    run_cmd(["make"], cwd=os.path.join(PROJECT_ROOT, "c_fastpath"))
+    run_cmd(["make"], cwd=os.path.join(PROJECT_ROOT, "tests", "c"))
+    print("\nSUCCESS: All Pellicle binaries and libraries successfully built.")
+
+def cmd_test():
+    print("================================================================================")
+    print("Executing Complete Pellicle Multi-Tier Verification Matrix")
+    print("================================================================================")
+    # Typography Linter
+    run_cmd(["python3", os.path.join(PROJECT_ROOT, "tools", "lint_no_em_dash.py")])
+    # Idris 2 Verification Suites
+    run_cmd(["./build/exec/test_core"])
+    run_cmd(["./build/exec/test_metrology"])
+    run_cmd(["./build/exec/test_kinematics"])
+    run_cmd(["./build/exec/test_exposure"])
+    run_cmd(["./build/exec/test_proof"])
+    # C17 Unit & Equivalence Tests
+    run_cmd(["./bin/test_fastpath"])
+    run_cmd(["python3", os.path.join(PROJECT_ROOT, "tests", "c", "test_equivalence.py")])
+    # Python Integration Suite
+    integration_test = os.path.join(PROJECT_ROOT, "tests", "integration", "test_suite.py")
+    if os.path.exists(integration_test):
+        run_cmd(["python3", integration_test])
+    print("\nSUCCESS: All verification suites executed with zero failures.")
+
+def cmd_bench():
+    run_cmd(["python3", os.path.join(PROJECT_ROOT, "tools", "bench_throughput.py")])
+
+def cmd_sim():
+    run_cmd(["./build/exec/pellicle"])
+
+def cmd_viz():
+    run_cmd(["python3", os.path.join(PROJECT_ROOT, "tools", "wafer_visualizer.py")])
+
+def cmd_lint():
+    run_cmd(["python3", os.path.join(PROJECT_ROOT, "tools", "lint_no_em_dash.py")])
+
+def print_help():
+    print("Usage: pelliclectl <command>")
+    print("\nCommands:")
+    print("  build    Compile Idris 2 package, C17 fastpath library, and daemons")
+    print("  test     Run entire multi-language verification suite")
+    print("  bench    Execute scanner WPH throughput and servo latency benchmarks")
+    print("  sim      Run verified dual-stage photolithography scanning simulation")
+    print("  viz      Display 300mm wafer die map and export vector SVG")
+    print("  lint     Verify zero em dash typography invariant across all files")
+
+def main():
+    if len(sys.argv) < 2:
+        print_help()
+        sys.exit(1)
+        
+    cmd = sys.argv[1].lower()
+    if cmd == "build":
+        cmd_build()
+    elif cmd == "test":
+        cmd_test()
+    elif cmd == "bench":
+        cmd_bench()
+    elif cmd == "sim":
+        cmd_sim()
+    elif cmd == "viz":
+        cmd_viz()
+    elif cmd == "lint":
+        cmd_lint()
+    else:
+        print(f"Unknown command: {cmd}")
+        print_help()
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
