@@ -1,0 +1,37 @@
+name: Pellicle CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verification:
+    name: Multi-Tier Verification Matrix
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Idris 2 compiler
+        run: |
+          brew install idris2
+
+      - name: Verify Typography Invariant (Zero Em Dashes)
+        run: |
+          python3 tools/lint_no_em_dash.py
+
+      - name: Build and Execute Full Verification Suite
+        run: |
+          make test
+
+      - name: Run Throughput and Latency Benchmarks
+        run: |
+          make bench
