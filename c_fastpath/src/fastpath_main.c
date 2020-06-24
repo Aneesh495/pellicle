@@ -12,7 +12,7 @@
 static volatile bool g_running = true;
 
 static void handle_signal(int sig) {
-    (void)sig;
+    printf("\nReceived signal %d, stopping...\n", sig);
     g_running = false;
 }
 
@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
     
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
+    signal(SIGPIPE, SIG_IGN); /* Prevent termination on client socket disconnect */
     
     printf("================================================================================\n");
     printf("  PELLICLE C17 Fastpath Hardware Acceleration Daemon\n");
@@ -35,6 +36,7 @@ int main(int argc, char **argv) {
     }
     
     printf("Fastpath IPC daemon running. Press Ctrl+C to terminate.\n");
+    fflush(stdout);
     
     uint64_t iter = 0;
     while (g_running && server.is_running) {
@@ -49,12 +51,14 @@ int main(int argc, char **argv) {
                    server.actual_pose.y_mm,
                    server.actual_pose.z_mm,
                    server.actuator_state.total_ohmic_power_w);
+            fflush(stdout);
         }
     }
     
-    printf("\nShutting down Pellicle C17 Fastpath server...\n");
+    printf("\nShutting down Pellicle C17 Fastpath server... (g_running=%d, is_running=%d)\n", g_running, server.is_running);
     fastpath_ipc_server_close(&server);
     printf("Fastpath daemon cleanly exited.\n");
+    fflush(stdout);
     
     return 0;
 }

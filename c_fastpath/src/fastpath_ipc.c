@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/time.h>
 
 static uint32_t compute_crc32(const uint8_t *data, size_t len) {
     uint32_t crc = 0xFFFFFFFF;
@@ -25,6 +26,26 @@ static uint32_t compute_crc32(const uint8_t *data, size_t len) {
         }
     }
     return ~crc;
+}
+
+static ssize_t recv_exact(int fd, void *buf, size_t len) {
+    size_t total = 0;
+    uint8_t *p = (uint8_t *)buf;
+    while (total < len) {
+        ssize_t n = recv(fd, p + total, len - total, 0);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                usleep(500);
+                continue;
+            }
+            return -1;
+        }
+        if (n == 0) {
+            break;
+        }
+        total += (size_t)n;
+    }
+    return (ssize_t)total;
 }
 
 int fastpath_ipc_server_init(fastpath_server_t *server, const char *socket_path) {
@@ -45,7 +66,7 @@ int fastpath_ipc_server_init(fastpath_server_t *server, const char *socket_path)
         return -1;
     }
     
-    /* Set non-blocking */
+    /* Set non-blocking on listening socket */
     int flags = fcntl(server->server_fd, F_GETFL, 0);
     fcntl(server->server_fd, F_SETFL, flags | O_NONBLOCK);
     
@@ -75,9 +96,14 @@ int fastpath_ipc_server_init(fastpath_server_t *server, const char *socket_path)
 }
 
 static void handle_client_request(fastpath_server_t *server, int client_fd) {
+    /* Set 1 second timeout on client socket */
+    struct timeval tv = {.tv_sec = 1, .tv_usec = 0};
+    setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    
     pellicle_ipc_header_t req_header;
-    ssize_t n = recv(client_fd, &req_header, sizeof(req_header), 0);
-    if (n != sizeof(req_header)) {
+    ssize_t n = recv_exact(client_fd, &req_header, sizeof(req_header));
+    if (n != (ssize_t)sizeof(req_header)) {
         return;
     }
     
@@ -124,7 +150,7 @@ static void handle_client_request(fastpath_server_t *server, int client_fd) {
         case PELLICLE_OP_SET_SETPOINT: {
             if (req_header.payload_len == sizeof(fastpath_pose_t)) {
                 fastpath_pose_t new_target;
-                recv(client_fd, &new_target, sizeof(new_target), 0);
+                recv_exact(client_fd, &new_target, sizeof(new_target));
                 if (fastpath_kinematics_check_envelope(&new_target)) {
                     server->target_pose = new_target;
                     resp_header.status = PELLICLE_STATUS_OK;
